@@ -1,58 +1,86 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistem Manajemen Sewa Garasi (Garage System Manager)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi web berbasis **Laravel 13** untuk mengelola penyewaan unit garasi harian dan bulanan, verifikasi identitas penyewa (KTP), validasi kompatibilitas kendaraan (termasuk kalkulasi pengisian daya kendaraan listrik/EV), perpanjangan masa sewa, serta pelaporan keuangan.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Fitur Utama
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 1. Autentikasi & Verifikasi Penyewa (`tenant` & `admin`)
+- Registrasi penyewa baru dengan unggah foto KTP (`nik` 16 digit, email unik, dan nomor telepon).
+- Verifikasi KTP oleh Admin (`pending`, `approved`, `rejected`) sebelum penyewa dapat melakukan pemesanan garasi.
+- Fitur unggah ulang KTP apabila status verifikasi ditolak.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 2. Manajemen Garasi & Kendaraan
+- **Tipe Unit Garasi:**
+  - **Tipe S (Standard):** Khusus untuk kendaraan standar (sepeda).
+  - **Tipe C (Charging):** Untuk kendaraan mobil standar maupun mobil listrik.
+  - **Tipe E (Exclusive):** Khusus untuk mobil listrik dengan fasilitas pengisian daya penuh.
+- **Tipe Kendaraan Penyewa:**
+  - `standard` (hanya dapat menyewa garasi tipe **S**, plat nomor opsional).
+  - `charging` (dapat menyewa garasi tipe **C**, wajib plat nomor unik).
+  - `exclusive` (dapat menyewa garasi tipe **C** atau **E**, wajib plat nomor unik serta kapasitas baterai & sisa daya dalam kWh).
 
-## Learning Laravel
+### 3. Pemesanan, Perhitungan Tarif & Perpanjangan Sewa
+- **Skema Tarif Harian (`daily`):** `tarif_harian × jumlah_hari` (maksimal `jumlah_hari_bulan_tersebut - 1`).
+- **Skema Tarif Bulanan (`monthly`):** `tarif_harian × 25` untuk durasi 1 bulan kalender penuh.
+- **Biaya Charging EV:** Otomatis dihitung pada transaksi kendaraan `exclusive` di garasi tipe `E` dengan rumus `(kapasitas_baterai_kwh - sisa_kwh) × tarif_kwh_garasi`.
+- **Deteksi Bentrok Jadwal:** Mencegah pemesanan ganda pada unit garasi maupun kendaraan yang sama di rentang tanggal yang bertabrakan.
+- **Perpanjangan Sewa (`Extend`):** Diproses oleh Admin untuk sewa berstatus `booked` atau `active` (harian maupun bulanan), mendukung perpindahan unit garasi yang kompatibel serta pencatatan bukti bayar tambahan.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 4. Laporan Keuangan & Okupansi
+- Rekapitulasi pendapatan dari pembayaran sewa awal (`initial`) dan perpanjangan (`extension`).
+- Statistik jumlah transaksi berdasarkan status (`booked`, `active`, `completed`, `cancelled`) serta rincian okupansi dan pendapatan per unit garasi dengan filter rentang tanggal.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## Arsitektur & Struktur Kode
 
-## Agentic Development
+Aplikasi menerapkan pola **MVC + Service Layer** dengan pemisahan tanggung jawab:
+- `app/Models/`: Eloquent ORM (`User`, `Garage`, `Vehicle`, `Rental`, `RentalExtension`, `Payment`).
+- `app/Services/`: Enkapsulasi logika bisnis (`AuthService`, `AvailabilityService`, `GarageService`, `RentalPricingService`, `ExtensionService`, `ReportService`).
+- `app/Http/Controllers/`: Penanganan HTTP request & validasi (`AuthController`, `GarageController`, `VehicleController`, `RentalController`, `ReportController`).
+- `app/Http/Middleware/RoleMiddleware.php`: Pembatasan hak akses berbasis peran (`admin` dan `tenant`).
+- `tests/Feature/GarageRentalUnitTest.php`: Pengujian otomatis skenario bisnis utama menggunakan PHPUnit.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+---
 
-```bash
-composer require laravel/boost --dev
+## Prasyarat Sistem
 
-php artisan boost:install
-```
+- PHP >= 8.2
+- Composer
+- Node.js & NPM
+- MySQL / MariaDB / SQLite
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## Panduan Instalasi & Menjalankan Aplikasi
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+1. **Clone repositori dan masuk ke direktori proyek:**
+   ```bash
+   git clone <url-repositori-anda>
+   cd garage-system-manager
 
-## Code of Conduct
+2. **Install dependensi PHP dan JavaScript:**
+    composer install
+    npm install
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+3. **Konfigurasi file environment:**
+    cp .env.example .env
+    php artisan key:generate 
 
-## Security Vulnerabilities
+    Sesuaikan konfigurasi koneksi database (DB_CONNECTION, DB_DATABASE, DB_USERNAME, DB_PASSWORD) pada file .env
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+4. **Jalankan migrasi database, seeder awal, dan symbolic link storage:**
+    php artisan migrate --seed
+    php artisan storage:link
 
-## License
+5. **Build aset frontend dan jalankan server lokal:**
+    npm run build
+    php artisan serve
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+    Akses aplikasi melalui browser di http://127.0.0.1:8000.
+
+## Panduan Menjalankan Unit Testing
+
+    php artisan test
